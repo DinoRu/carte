@@ -1,0 +1,42 @@
+:root {
+    --primary: "#000000"
+    --secondary: "#213934"
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--primary);
+}
+
+.main {
+    text-align: center;
+}
+
+.map {
+	height: 800px;
+	width: 100%;
+}
+
+input[type='file'] {
+   display: none;
+}
+/* Style pour le bouton de téléchargement */
+
+
+/* Icône pour l'upload */
+.upload-icon {
+    margin-right: 8px;
+}
+
+.upload-icon_img {
+    color: white;
+}
+
+.bx-upload {
+    size: 25;
+}

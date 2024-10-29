@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>Carte</title>
+    <link rel="stylesheet" href="./index.css" />
+    <link
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      rel="stylesheet"
+    />
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"
+      integrity="sha512-dfX5uYVXzyU8+KHqj8bjo7UkOdg18PaOtpa48djpNbZHwExddghZ+ZmzWT06R5v6NSk3ZUfsH6FNEDepLx9hPQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+      .custom-file-upload {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: inline-flex;
+        align-items: center;
+        padding: 10px 20px;
+        color: white;
+        background-color: #4caf50;
+        border: 2px solid #4caf50;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s, color 0.3s;
+        z-index: 1000;
+      }
+
+      .custom-file-upload:hover {
+        background-color: white;
+        color: #4caf50;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main" id="main">
+      <label for="fileInput" class="custom-file-upload">
+        <span class="upload-icon"><i class="bx bx-upload"></i></span>
+      </label>
+      <input type="file" id="fileInput" accept=".csv, .xlsx" />
+      <div id="map" class="map"></div>
+    </div>
+
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=620af47a-409e-422c-bd05-6540ef11a963&lang=ru_RU"></script>
+
+    <!-- <script src="index.js" type="text/javascript"></script> -->
+    <script>
+      ymaps.ready(init);
+      let map;
+      const centerCoords = [42.11055971, 48.20634499];
+      // Coordonnées statiques pour les icônes de personnes
+      const personCoordinates = [
+        [42.111, 48.207],
+        [42.112, 48.206],
+        [42.109, 48.208],
+        [42.113, 48.205],
+        [42.108, 48.209],
+        [42.11, 48.204],
+        [42.114, 48.203],
+        [42.107, 48.21],
+        [42.115, 48.202],
+        [42.106, 48.211],
+        [42.109, 48.201],
+        [42.116, 48.2],
+        [42.105, 48.212],
+        [42.117, 48.199],
+        [42.104, 48.213],
+        [42.118, 48.198],
+        [42.103, 48.214],
+        [42.119, 48.197],
+        [42.102, 48.215],
+        [42.12, 48.196],
+      ];
+      function init() {
+        map = new ymaps.Map('map', {
+          center: centerCoords,
+          zoom: 15,
+          // type: 'yandex#satellite',
+          // Карта будет создана без
+          // элементов управления.
+          controls: ['zoomControl'],
+          behaviors: ['drag'],
+        });
+
+        document
+          .getElementById('fileInput')
+          .addEventListener('change', handleFileSelect, false);
+
+        // Add people to map
+        addPersonIconToMap(personCoordinates);
+      }
+
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+
+        if (!file) return;
+
+        if (file.name.endsWith('.csv')) {
+          Papa.parse(file, {
+            header: true,
+            complete: function (results) {
+              const data = results.data;
+              addPlacesToMap(data);
+            },
+            error: function (error) {
+              console.error('Error to uploaded file csv: ', error);
+            },
+          });
+        } else if (file.name.endsWith('.xlsx')) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(sheet, {
+              header: 1,
+            });
+            const coordinatesData = jsonData.slice(1).map((row) => {
+              const latitude = parseFloat(
+                row[0].toString().replace(',', '.')
+              );
+              const longitude = parseFloat(
+                row[1].toString().replace(',', '.')
+              );
+              const hintContent = row[3] || 'No Content';
+
+              return {
+                latitude: latitude,
+                longitude: longitude,
+                hintContent: hintContent,
+              };
+            });
+            addPlacesToMap(coordinatesData);
+          };
+          reader.readAsArrayBuffer(file);
+        }
+      }
+
+      function addPlacesToMap(coordinates) {
+        coordinates.forEach((place, index) => {
+          const latitude = parseFloat(place.latitude);
+          const longitude = parseFloat(place.longitude);
+          const hintContent = place.hintContent;
+
+          if (!isNaN(latitude) && !isNaN(longitude)) {
+            let iconUrl =
+              index === 0
+                ? './assets/rectangle.svg'
+                : './assets/close.svg';
+            const placeMark = new ymaps.Placemark(
+              [latitude, longitude],
+              {
+                hintContent: `<div>${hintContent}</div>`,
+              },
+              {
+                iconLayout: 'default#image',
+                iconImageHref: iconUrl,
+                iconImageSize: [20, 20],
+                iconImageOffset: [-20, -20],
+              }
+            );
+            map.geoObjects.add(placeMark);
+          }
+        });
+      }
+
+      function addPersonIconToMap(personCoords) {
+        personCoords.forEach((coords, index) => {
+          const personPlacemark = new ymaps.Placemark(
+            coords,
+            {
+              hintContent: `<div>Person ${index}</div>`,
+            },
+            {
+              iconLayout: 'default#image',
+              iconImageHref: './assets/people.png',
+              iconImageSize: [10, 10],
+              iconImageOffset: [-15, -15],
+            }
+          );
+          map.geoObjects.add(personPlacemark);
+        });
+      }
+
+      // function generateRandomCoordinates(center, count, range) {
+      //   const [lat, long] = center;
+      //   const coords = [];
+      //   for (let i = 0; i < count; i++) {
+      //     const randomLat = lat + (Math.random() - 0.5) * range;
+      //     const randomLong = long + (Math.random() - 0.5) * range;
+      //     coords.push(randomLat, randomLong);
+      //   }
+      //   return coords;
+      // }
+    </script>
+  </body>
+</html>
