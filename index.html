@@ -99,6 +99,7 @@
           .getElementById('fileInput')
           .addEventListener('change', handleFileSelect, false);
 
+        getCoordinates();
         // Add people to map
         addPersonIconToMap(personCoordinates);
       }
@@ -144,9 +145,35 @@
                 hintContent: hintContent,
               };
             });
-            addPlacesToMap(coordinatesData);
+            <!-- addPlacesToMap(coordinatesData); -->
+            updateMapMarkers(coordinatesData);
+            saveCoordinates(coordinatesData);
           };
           reader.readAsArrayBuffer(file);
+        }
+      }
+
+      // Save coordinates to server
+      async function saveCoordinates(coordinates) {
+        try {
+          const response = await fetch(
+            'http://45.84.226.247:4080/api/coordinates/create',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(coordinates),
+            }
+          );
+          if (!response.ok) {
+            console.error(
+              'Failed to save coordinates:',
+              response.statusText
+            );
+          }
+        } catch (error) {
+          console.error('Error saving coordinates:', error);
         }
       }
 
@@ -196,16 +223,47 @@
         });
       }
 
-      // function generateRandomCoordinates(center, count, range) {
-      //   const [lat, long] = center;
-      //   const coords = [];
-      //   for (let i = 0; i < count; i++) {
-      //     const randomLat = lat + (Math.random() - 0.5) * range;
-      //     const randomLong = long + (Math.random() - 0.5) * range;
-      //     coords.push(randomLat, randomLong);
-      //   }
-      //   return coords;
-      // }
+      async function getCoordinates() {
+        try {
+          const response = await fetch(
+            'http://45.84.226.247:4080/api/coordinates'
+          );
+          if (response.ok) {
+            const coordinates = await response.json();
+            updateMapMarkers(coordinates);
+          } else {
+            console.error(
+              'Failed to fetch coordinates:',
+              response.statusText
+            );
+          }
+        } catch (error) {
+          console.error('Error fetching coordinates:', error);
+        }
+      }
+      // Function to update map markers
+      function updateMapMarkers(coordinates) {
+        // Add new geoObjects
+        coordinates.forEach((coord, index) => {
+          let iconUrl =
+            index === 0
+              ? './assets/rectangle.svg'
+              : './assets/close.svg';
+          const placemark = new ymaps.Placemark(
+            [coord.latitude, coord.longitude],
+            {
+              hintContent: coord.hintcontent || `Marker ${index + 1}`,
+            },
+            {
+              iconLayout: 'default#image',
+              iconImageHref: iconUrl,
+              iconImageSize: [20, 20],
+              iconImageOffset: [-20, -20],
+            }
+          );
+          map.geoObjects.add(placemark);
+        });
+      }
     </script>
   </body>
 </html>
